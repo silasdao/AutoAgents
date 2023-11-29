@@ -29,10 +29,10 @@ GT_URL: str = "http://curtis.ml.cmu.edu/datasets/hotpot/hotpot_dev_fullwiki_v1.j
 
 RESULTS_DIR: str = os.path.join(PARENT_DIRECTORY, f"results_{MODEL_NAME}")
 
-OUTPUT_FILE: str = os.path.join(RESULTS_DIR, f"prediction.json")
+OUTPUT_FILE: str = os.path.join(RESULTS_DIR, "prediction.json")
 
 RUN_EVAL_LOG_FILE: str = os.path.join(RESULTS_DIR, "run_eval.log")
 
-WRONG_ANS_OUTPUT_FILE: str = os.path.join(RESULTS_DIR, f"wrong_answers.json")
+WRONG_ANS_OUTPUT_FILE: str = os.path.join(RESULTS_DIR, "wrong_answers.json")
 
 NEW_LOG_DIR: str = os.path.join(RESULTS_DIR, "data")

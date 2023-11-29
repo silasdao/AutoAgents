@@ -58,11 +58,8 @@ def post_process_gpt_response(num_prompt_agents, response):
         splitted_data = re.split(f"{idx}\.\s+(Name|Goal):", inst)
         if len(splitted_data) != 5:
             continue
-        else:
-            name = splitted_data[2].strip()
-            role = splitted_data[4].strip()
-            # goals = splitted_data[6].strip()
-            # goals = "" if goals.lower() == "<nogoal>" else goals
+        name = splitted_data[2].strip()
+        role = splitted_data[4].strip()
         # filter out too short or too long role
         if len(role.split()) <= 3 or len(role.split()) > 150:
             continue

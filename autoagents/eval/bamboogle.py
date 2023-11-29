@@ -33,7 +33,7 @@ async def eval(eval_results_path: str=LOG_SAVE_DIR):
         finish = False
         with open(file, "r") as f:
             log_data = json.load(f)
-            has_error = any([True if "error" in entry else False for entry in log_data])
+            has_error = any("error" in entry for entry in log_data)
             for entry in log_data:
                 if not has_error:
                     if "goal" in entry:

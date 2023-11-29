@@ -75,7 +75,7 @@ def preprocess(
             source = source[1:]
 
         conv.messages = []
-        for j, sentence in enumerate(source):
+        for sentence in source:
             role = roles[sentence["from"]]
             conv.append_message(role, sentence["value"])
         conversations.append(conv.get_prompt())
@@ -95,11 +95,6 @@ def preprocess(
     # Mask targets
     sep = conv.sep + conv.roles[-1] + ": "
     for conversation, target in zip(conversations, targets):
-        if False:
-            z = target.clone()
-            z = torch.where(z == IGNORE_TOKEN_ID, tokenizer.unk_token_id, z)
-            rank0_print(tokenizer.decode(z))
-
         total_len = int(target.ne(tokenizer.pad_token_id).sum())
         inputs, outputs = conversation.split(sep)  # [.., goal, history | next_action]
         cur_len = 0
@@ -109,11 +104,6 @@ def preprocess(
         outputs_len = len(tokenizer(outputs).input_ids)
         target[cur_len+outputs_len:] = IGNORE_TOKEN_ID
         cur_len += outputs_len
-
-        if False:
-            z = target.clone()
-            z = torch.where(z == IGNORE_TOKEN_ID, tokenizer.unk_token_id, z)
-            rank0_print(tokenizer.decode(z))
 
         if cur_len < tokenizer.model_max_length:
             if cur_len != total_len:

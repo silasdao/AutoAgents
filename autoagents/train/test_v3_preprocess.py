@@ -44,7 +44,7 @@ def preprocess(
             source = source[1:]
 
         conv.messages = []
-        for j, sentence in enumerate(source):
+        for sentence in source:
             role = roles[sentence["from"]]
             conv.append_message(role, sentence["value"])
         conversations.append(conv.get_prompt())

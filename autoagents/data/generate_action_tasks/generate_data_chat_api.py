@@ -59,9 +59,8 @@ def post_process_chat_gpt_response(num_prompt_agents, response):
         splitted_data = re.split(f"{idx}\.\s+(Name|Goal):", inst)
         if len(splitted_data) != 5:
             continue
-        else:
-            name = splitted_data[2].strip()
-            goal = splitted_data[4].strip()
+        name = splitted_data[2].strip()
+        goal = splitted_data[4].strip()
         # filter out too short or too long role
         if len(goal.split()) <= 3 or len(goal.split()) > 150:
             continue

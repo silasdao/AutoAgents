@@ -61,7 +61,7 @@ def get_summary_from_log_data(log_data: list):
         question=None,
         answer=None
     )
-    
+
     # Handle errors and rewrites
     is_valid: bool = True
     counts["total_logs"] += 1
@@ -107,7 +107,7 @@ def get_summary_from_log_data(log_data: list):
             counts["valid_steps"] += 1
             prediction = json.loads(entry["conversations"][-1]["value"])
             action = prediction["action"]
-            if action == "Tool_Search" or action == "Tool_Wikipedia":
+            if action in ["Tool_Search", "Tool_Wikipedia"]:
                 counts["search_invoked"] += 1
             elif action == "Tool_Notepad":
                 counts["notepad_invoked"] += 1
@@ -130,15 +130,9 @@ def get_summary_from_log_data(log_data: list):
     if last_convo[0]["from"] == "history":
         hist = last_convo[0]["value"]
         actions = [h["action"] for h in hist]
-        if len(actions) < 5 and len(actions) > 0:
-            actions_str = "->".join(actions) 
+        if len(actions) < 5 and actions:
+            actions_str = "->".join(actions)
             plan_counts[actions_str] += 1
-            if actions_str == "Tool_Notepad":
-                pass
-            if actions_str == "Tool_Search->Tool_Search->Tool_Notepad":
-                pass
-            if actions_str == "Tool_Search->Tool_Search->Tool_Search->Tool_Notepad":
-                pass
         plans = []
         for plan in [h["plan"] for h in hist]:
             plans.extend(plan)
@@ -151,8 +145,6 @@ def get_summary_from_log_data(log_data: list):
         if len_hist > 0:
             len_plan0 = len(hist[0]["plan"])
             len_initial_plan.append(len_plan0)
-            if len_plan0 == 1:
-                pass
         counts["len_hist"] += len_hist
         len_history_trace.append(len_hist)
 
@@ -164,10 +156,9 @@ def get_summary_from_log_data(log_data: list):
                 if h["action_input"] in inputs[h["action"]]:
                     if output["action"] == "Tool_Finish":
                         counts["Finish_with_dups"] += 1
-                        break
                     else: # only count duplicates that didn't finish
                         counts["duplicate_actions"] += 1
-                        break
+                    break
             inputs[h["action"]].add(h["action_input"])
 
     return summary

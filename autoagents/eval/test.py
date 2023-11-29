@@ -21,20 +21,7 @@ MAX_RETRIES: int = 2
 
 
 async def work(user_input: str, model: str, temperature: int, agent: str, prompt_version: str, persist_logs: bool, log_save_dir: str):
-    if model not in OPENAI_MODEL_NAMES:
-        if prompt_version == "v2":
-            llm = CustomLLM(
-                model_name=model,
-                temperature=temperature,
-                request_timeout=AWAIT_TIMEOUT
-            )
-        elif prompt_version == "v3":
-            llm = CustomLLMV3(
-                model_name=model,
-                temperature=temperature,
-                request_timeout=AWAIT_TIMEOUT
-            )
-    else:
+    if model in OPENAI_MODEL_NAMES:
         llm = ChatOpenAI(
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             openai_organization=os.getenv("OPENAI_API_ORG"),
@@ -43,6 +30,18 @@ async def work(user_input: str, model: str, temperature: int, agent: str, prompt
             request_timeout=AWAIT_TIMEOUT
         )
 
+    elif prompt_version == "v2":
+        llm = CustomLLM(
+            model_name=model,
+            temperature=temperature,
+            request_timeout=AWAIT_TIMEOUT
+        )
+    elif prompt_version == "v3":
+        llm = CustomLLMV3(
+            model_name=model,
+            temperature=temperature,
+            request_timeout=AWAIT_TIMEOUT
+        )
     retry_count = 0
     while retry_count < MAX_RETRIES:
         outputq = asyncio.Queue()
@@ -88,12 +87,12 @@ async def work(user_input: str, model: str, temperature: int, agent: str, prompt
 
 async def main(questions, args):
     sem = asyncio.Semaphore(10)
-    
+
     async def safe_work(user_input: str, model: str, temperature: int, agent: str, prompt_version: str, persist_logs: bool, log_save_dir: str):
         async with sem:
             return await work(user_input, model, temperature, agent, prompt_version, persist_logs, log_save_dir)
-    
-    persist_logs = True if args.persist_logs else False
+
+    persist_logs = bool(args.persist_logs)
     await tqdm_asyncio.gather(*[safe_work(q, args.model, args.temperature, args.agent, args.prompt_version, persist_logs, args.log_save_dir) for q in questions])
 
 

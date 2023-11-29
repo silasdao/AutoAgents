@@ -79,11 +79,9 @@ The Action Input cannot be None or empty.
 
 async def ddg(query: str):
     if query is None or query.lower().strip().strip('"') == "none" or query.lower().strip().strip('"') == "null":
-        x = "The action_input field is empty. Please provide a search query."
-        return [x]
-    else:
-        client = Client()
-        return client.search(query)[:MAX_SEARCH_RESULTS]
+        return ["The action_input field is empty. Please provide a search query."]
+    client = Client()
+    return client.search(query)[:MAX_SEARCH_RESULTS]
 
 docstore=DocstoreExplorer(Wikipedia())
 
@@ -110,11 +108,13 @@ async def wikidumpsearch_es(x: str) -> str:
     res = []
     for hit in resp['hits']['hits']:
         doc = hit["_source"]
-        res.append({
-            "title": doc["title"],
-            "text": ''.join(sent for sent in doc["text"][1]),
-            "url": doc["url"]
-        })
+        res.append(
+            {
+                "title": doc["title"],
+                "text": ''.join(doc["text"][1]),
+                "url": doc["url"],
+            }
+        )
         if doc["title"] == x:
             return [{
                 "title": doc["title"],
@@ -224,8 +224,7 @@ def rewrite_search_query(q: str, search_history, llm: BaseLanguageModel) -> str:
     prompt = PromptTemplate(template=template,
                             input_variables=["action_input", "history_string"])
     llm_chain = LLMChain(prompt=prompt, llm=llm)
-    result = llm_chain.predict(action_input=q, history_string=history_string)
-    return result
+    return llm_chain.predict(action_input=q, history_string=history_string)
 
 
 ### Prompt V3 tools

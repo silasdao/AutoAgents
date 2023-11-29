@@ -42,10 +42,14 @@ class CustomPromptTemplate(StringPromptTemplate):
         self.ialogger.add_history(history)
         goal = kwargs["input"]
         goal = f"Today is {date.today()}. {goal}"
-        list_prompt =[]
-        list_prompt.append({"role": "goal", "content": goal})
-        list_prompt.append({"role": "tools", "content": [{tool.name: tool.description} for tool in self.tools]})
-        list_prompt.append({"role": "history", "content": history})
+        list_prompt = [
+            {"role": "goal", "content": goal},
+            {
+                "role": "tools",
+                "content": [{tool.name: tool.description} for tool in self.tools],
+            },
+            {"role": "history", "content": history},
+        ]
         return json.dumps(list_prompt)
 
 

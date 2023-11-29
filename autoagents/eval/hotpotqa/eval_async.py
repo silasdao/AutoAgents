@@ -62,15 +62,16 @@ class HotpotqaAsyncEval:
         with open(self.pred_file, 'w') as f:
             json.dump(pred_dict, f, indent=2)
 
-        wrong_ans = []
-        for qid, stat in pred_dict["statistics"].items():
-            if stat["summary"]["counts"].get("equivalency", 0) == 0:
-                wrong_ans.append({
-                    "question": stat["question"],
-                    "gt_answer": stat["gt_answer"],
-                    "prediction": pred_dict["answer"].get(qid, ''),
-                    "reasoning": stat["reasoning"]
-                })
+        wrong_ans = [
+            {
+                "question": stat["question"],
+                "gt_answer": stat["gt_answer"],
+                "prediction": pred_dict["answer"].get(qid, ''),
+                "reasoning": stat["reasoning"],
+            }
+            for qid, stat in pred_dict["statistics"].items()
+            if stat["summary"]["counts"].get("equivalency", 0) == 0
+        ]
         with open(self.wrong_ans_file, 'w') as f:
             json.dump(wrong_ans, f, indent=2)
 
@@ -91,8 +92,6 @@ def prepare_dataset(
 ):
 
     full_dataset = get_hotpotqa_fullwiki_devset()
-    filtered_dataset = []
-
     if total is None:
         total = len(full_dataset)
 
@@ -105,17 +104,19 @@ def prepare_dataset(
                 except json.decoder.JSONDecodeError:
                     continue
                 if log_data and isinstance(log_data, list):
-                    goal = None
-                    for entry in log_data:
-                        if "goal" in entry:
-                            goal = entry["goal"]
-                            break
-                    if goal:
+                    if goal := next(
+                        (
+                            entry["goal"]
+                            for entry in log_data
+                            if "goal" in entry
+                        ),
+                        None,
+                    ):
                         goal_set.add(goal)
+        filtered_dataset = []
+
         for data in full_dataset:
-            for goal in goal_set:
-                if data["question"] in goal:
-                    filtered_dataset.append(data)
+            filtered_dataset.extend(data for goal in goal_set if data["question"] in goal)
         return filtered_dataset
 
     if isinstance(pred_ckpt, dict):
@@ -206,11 +207,7 @@ async def evaluate_log_data(
     question = summary["question"]
     if question is None:
         return
-    gt = None
-    for q in dataset:
-        if q in question:
-            gt = dataset[q]
-            break
+    gt = next((dataset[q] for q in dataset if q in question), None)
     if gt is None:
         return
     qid = gt["_id"]
@@ -236,7 +233,7 @@ async def evaluate_log_data(
         if gt["_id"] in pred_dict["error"]:
             del pred_dict["error"][gt["_id"]]
         await evaluate_final_answer(summary["answer"], gt, pred_dict, statistics)
-    
+
     for entry in log_data:
 
         if "error" in entry:

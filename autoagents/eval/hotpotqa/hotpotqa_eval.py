@@ -29,8 +29,6 @@ def f1_score(prediction, ground_truth):
     normalized_prediction = normalize_answer(prediction)
     normalized_ground_truth = normalize_answer(ground_truth)
 
-    ZERO_METRIC = (0, 0, 0)
-
     # if normalized_prediction in ['yes', 'no', 'noanswer'] and normalized_prediction != normalized_ground_truth:
     #     return ZERO_METRIC
     # if normalized_ground_truth in ['yes', 'no', 'noanswer'] and normalized_prediction != normalized_ground_truth:
@@ -41,7 +39,7 @@ def f1_score(prediction, ground_truth):
     common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
     num_same = sum(common.values())
     if num_same == 0:
-        return ZERO_METRIC
+        return 0, 0, 0
     precision = 1.0 * num_same / len(prediction_tokens)
     recall = 1.0 * num_same / len(ground_truth_tokens)
     f1 = (2 * precision * recall) / (precision + recall)
@@ -63,8 +61,8 @@ def update_answer(metrics, prediction, gold):
 def update_sp(metrics, prediction, gold, statistics):
 
     # Only match titles
-    cur_sp_pred = set(title for rank in prediction for title in rank)
-    gold_sp_pred = set(x[0] for x in gold)
+    cur_sp_pred = {title for rank in prediction for title in rank}
+    gold_sp_pred = {x[0] for x in gold}
 
     tp, fp, fn = 0, 0, 0
     for e in cur_sp_pred:
@@ -108,8 +106,8 @@ def update_sp(metrics, prediction, gold, statistics):
 def update_last_sp(metrics, statistics, gold):
 
     # Only match titles
-    cur_sp_pred = set(title for title in statistics.get("citations", []))
-    gold_sp_pred = set(x[0] for x in gold)
+    cur_sp_pred = set(statistics.get("citations", []))
+    gold_sp_pred = {x[0] for x in gold}
 
     tp, fp, fn = 0, 0, 0
     for e in cur_sp_pred:
@@ -137,11 +135,11 @@ def eval(prediction_file, gold_file):
         print(f"len answer = {len(prediction['answer'])}, len error = {len(prediction['error'])}, len sp = {len(prediction['sp'])}, len statistics = {len(prediction['statistics'])}")
 
     with open(gold_file) as f:
-        gold = []
-        for data in json.load(f):
-            if data["_id"] in prediction["statistics"]:
-                gold.append(data)
-
+        gold = [
+            data
+            for data in json.load(f)
+            if data["_id"] in prediction["statistics"]
+        ]
     metrics = {'em': 0, 'f1': 0, 'prec': 0, 'recall': 0,
         'sp_em': 0, 'sp_f1': 0, 'sp_prec': 0, 'sp_recall': 0,
         'last_sp_em': 0, 'last_sp_f1': 0, 'last_sp_prec': 0, 'last_sp_recall': 0,
@@ -158,7 +156,7 @@ def eval(prediction_file, gold_file):
         cur_id = dp['_id']
         can_eval_joint = True
         if cur_id not in prediction['answer']:
-            print('missing answer {}'.format(cur_id))
+            print(f'missing answer {cur_id}')
             can_eval_joint = False
         else:
             em, prec, recall = update_answer(
@@ -171,7 +169,7 @@ def eval(prediction_file, gold_file):
         stats["len_initial_plan"].extend(summary["len_initial_plan"])
 
         if cur_id not in prediction['sp']:
-            print('missing sp fact {}'.format(cur_id))
+            print(f'missing sp fact {cur_id}')
             can_eval_joint = False
         else:
             sp_em, sp_prec, sp_recall = update_sp(
@@ -195,14 +193,14 @@ def eval(prediction_file, gold_file):
             metrics['joint_recall'] += joint_recall
 
     N = len(gold)
-    for k in metrics.keys():
-        metrics[k] /= N
+    for v in metrics.values():
+        v /= N
 
     hist, rng = np.histogram(stats["len_history_trace"], bins=range(0, 16))
     stats["len_history_trace"] = hist.tolist()
     hist, rng = np.histogram(stats["len_initial_plan"], bins=range(0, 16))
     stats["len_initial_plan"] = hist.tolist()
-    
+
     stats["error_rate"] = {
         error: cnt / N
         for error, cnt in stats["error_counts"].items()

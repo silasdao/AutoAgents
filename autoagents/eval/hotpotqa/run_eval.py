@@ -177,15 +177,16 @@ def save_output():
     with open(OUTPUT_FILE, 'w') as f:
         json.dump(output_dict, f, indent=2)
 
-    wrong_ans = []
-    for qid, stat in output_dict["statistics"].items():
-        if stat["equivalency"] == 0:
-            wrong_ans.append({
-                "question": stat["question"],
-                "gt_answer": stat["gt_answer"],
-                "prediction": output_dict["answer"].get(qid, ''),
-                "reasoning": stat["reasoning"]
-            })
+    wrong_ans = [
+        {
+            "question": stat["question"],
+            "gt_answer": stat["gt_answer"],
+            "prediction": output_dict["answer"].get(qid, ''),
+            "reasoning": stat["reasoning"],
+        }
+        for qid, stat in output_dict["statistics"].items()
+        if stat["equivalency"] == 0
+    ]
     with open(WRONG_ANS_OUTPUT_FILE, 'w') as f:
         json.dump(wrong_ans, f, indent=2)
 

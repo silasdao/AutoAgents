@@ -73,7 +73,7 @@ async def check_model(request) -> Optional[JSONResponse]:
         try:
             _worker_addr = await get_worker_address(request.model, client)
         except:
-            models_ret = await client.post(controller_address + "/list_models")
+            models_ret = await client.post(f"{controller_address}/list_models")
             models = models_ret.json()["models"]
             ret = create_error_response(
                 ErrorCode.INVALID_MODEL,
@@ -87,7 +87,7 @@ async def check_length(request, prompt, max_tokens):
         worker_addr = await get_worker_address(request.model, client)
 
         response = await client.post(
-            worker_addr + "/model_details",
+            f"{worker_addr}/model_details",
             headers=headers,
             json={"model": request.model},
             timeout=WORKER_API_TIMEOUT,
@@ -95,7 +95,7 @@ async def check_length(request, prompt, max_tokens):
         context_len = response.json()["context_length"]
 
         response = await client.post(
-            worker_addr + "/count_token",
+            f"{worker_addr}/count_token",
             headers=headers,
             json={"model": request.model, "prompt": json.dumps(prompt)},
             timeout=WORKER_API_TIMEOUT,
@@ -147,15 +147,13 @@ def check_requests(request) -> Optional[JSONResponse]:
             ErrorCode.PARAM_OUT_OF_RANGE,
             f"{request.top_p} is greater than the maximum of 1 - 'temperature'",
         )
-    if request.stop is not None and (
-        not isinstance(request.stop, str) and not isinstance(request.stop, list)
-    ):
+    if request.stop is None or isinstance(request.stop, (str, list)):
+        return None
+    else:
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
             f"{request.stop} is not valid under any of the given schemas - 'stop'",
         )
-
-    return None
 
 
 def process_input(model_name, inp):
@@ -232,7 +230,7 @@ async def get_gen_params(
             {"stop": conv.stop_str, "stop_token_ids": conv.stop_token_ids}
         )
     else:
-        gen_params.update({"stop": stop})
+        gen_params["stop"] = stop
 
     logger.info(f"==== request ====\n{gen_params}")
     return gen_params
@@ -250,7 +248,7 @@ async def get_worker_address(model_name: str, client: httpx.AsyncClient) -> str:
     controller_address = app_settings.controller_address
 
     ret = await client.post(
-        controller_address + "/get_worker_address", json={"model": model_name}
+        f"{controller_address}/get_worker_address", json={"model": model_name}
     )
     worker_addr = ret.json()["address"]
     # No available worker
@@ -267,7 +265,7 @@ async def get_conv(model_name: str):
         conv_template = conv_template_map.get((worker_addr, model_name))
         if conv_template is None:
             response = await client.post(
-                worker_addr + "/worker_get_conv_template",
+                f"{worker_addr}/worker_get_conv_template",
                 headers=headers,
                 json={"model": model_name},
                 timeout=WORKER_API_TIMEOUT,
@@ -281,14 +279,13 @@ async def get_conv(model_name: str):
 async def show_available_models():
     controller_address = app_settings.controller_address
     async with httpx.AsyncClient() as client:
-        ret = await client.post(controller_address + "/refresh_all_workers")
-        ret = await client.post(controller_address + "/list_models")
+        ret = await client.post(f"{controller_address}/refresh_all_workers")
+        ret = await client.post(f"{controller_address}/list_models")
     models = ret.json()["models"]
     models.sort()
-    # TODO: return real model permission details
-    model_cards = []
-    for m in models:
-        model_cards.append(ModelCard(id=m, root=m, permission=[ModelPermission()]))
+    model_cards = [
+        ModelCard(id=m, root=m, permission=[ModelPermission()]) for m in models
+    ]
     return ModelList(data=model_cards)
 
 
@@ -319,7 +316,7 @@ async def create_completion(request: CompletionRequest):
             stop=request.stop,
         )
         logger.info(f"{gen_params}")
-        for i in range(request.n):
+        for _ in range(request.n):
             content = asyncio.create_task(generate_completion(gen_params))
             text_completions.append(content)
 
@@ -403,20 +400,13 @@ async def generate_completion_stream(payload: Dict[str, Any]):
     async with httpx.AsyncClient() as client:
         worker_addr = await get_worker_address(payload["model"], client)
         delimiter = b"\0"
-        async with client.stream(
-            "POST",
-            worker_addr + "/worker_generate_stream",
-            headers=headers,
-            json=payload,
-            timeout=WORKER_API_TIMEOUT,
-        ) as response:
+        async with client.stream("POST", f"{worker_addr}/worker_generate_stream", headers=headers, json=payload, timeout=WORKER_API_TIMEOUT) as response:
             # content = await response.aread()
             async for raw_chunk in response.aiter_raw():
                 for chunk in raw_chunk.split(delimiter):
                     if not chunk:
                         continue
-                    data = json.loads(chunk.decode())
-                    yield data
+                    yield json.loads(chunk.decode())
 
 
 async def generate_completion(payload: Dict[str, Any]):
@@ -424,13 +414,12 @@ async def generate_completion(payload: Dict[str, Any]):
         worker_addr = await get_worker_address(payload["model"], client)
 
         response = await client.post(
-            worker_addr + "/worker_generate",
+            f"{worker_addr}/worker_generate",
             headers=headers,
             json=payload,
             timeout=WORKER_API_TIMEOUT,
         )
-        completion = response.json()
-        return completion
+        return response.json()
 
 
 if __name__ == "__main__":
